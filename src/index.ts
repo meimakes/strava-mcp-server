@@ -150,7 +150,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     switch (name) {
       case 'strava_get_activities': {
-        const params = args as GetActivitiesParams;
+        const params = (args || {}) as unknown as GetActivitiesParams;
         const result = await getActivities(stravaClient, params);
         return {
           content: [{ type: 'text', text: result }],
@@ -158,7 +158,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'strava_get_activity_details': {
-        const params = args as GetActivityDetailsParams;
+        const params = (args || {}) as unknown as GetActivityDetailsParams;
         const result = await getActivityDetails(stravaClient, params);
         return {
           content: [{ type: 'text', text: result }],
@@ -173,7 +173,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'strava_search_activities': {
-        const params = args as SearchActivitiesParams;
+        const params = (args || {}) as unknown as SearchActivitiesParams;
         const result = await searchActivities(stravaClient, params);
         return {
           content: [{ type: 'text', text: result }],
@@ -181,7 +181,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'strava_analyze_trends': {
-        const params = args as AnalyzeTrendsParams;
+        const params = (args || {}) as unknown as AnalyzeTrendsParams;
         const result = await analyzeTrends(stravaClient, params);
         return {
           content: [{ type: 'text', text: result }],
