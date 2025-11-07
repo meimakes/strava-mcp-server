@@ -70,6 +70,7 @@ STRAVA_REFRESH_TOKEN=from_setup_script
 STRAVA_EXPIRES_AT=from_setup_script
 USE_SSE=true
 PORT=3000
+WEBHOOK_VERIFY_TOKEN=your_random_secure_string  # Optional, only if using webhooks
 ```
 
 4. Deploy the application
@@ -114,6 +115,67 @@ npm run dev
 # Or run the compiled version
 npm start
 ```
+
+### 6. Enable Real-Time Webhooks (Optional)
+
+Get instant notifications when activities are created, updated, or deleted on Strava.
+
+#### Setup Webhooks
+
+1. **Add environment variable to Railway:**
+   ```
+   WEBHOOK_VERIFY_TOKEN=your_random_secure_string_here
+   ```
+   Generate a random string (e.g., `openssl rand -hex 32`)
+
+2. **Subscribe to Strava webhooks** (run once after deployment):
+   ```bash
+   curl -X POST https://www.strava.com/api/v3/push_subscriptions \
+     -F client_id=YOUR_STRAVA_CLIENT_ID \
+     -F client_secret=YOUR_STRAVA_CLIENT_SECRET \
+     -F callback_url=https://your-app.up.railway.app/webhook/strava \
+     -F verify_token=your_random_secure_string_here
+   ```
+
+   Response will include your subscription ID:
+   ```json
+   { "id": 120475 }
+   ```
+
+3. **Test it:** Do a workout, let it sync to Strava, then check Railway logs for:
+   ```
+   Received Strava webhook event: { aspect_type: 'create', object_id: 12345678, ... }
+   ```
+
+#### Using Webhooks
+
+Once webhooks are set up, you can use the new tool:
+
+```typescript
+// Query recent webhook events
+strava_get_recent_events({ limit: 10 })
+```
+
+This returns recent activity creates, updates, and deletes, allowing Claude to:
+- Know when you've just finished a workout
+- Detect edited or deleted activities
+- Provide faster responses by knowing which activities changed
+
+#### Managing Webhooks
+
+```bash
+# View your subscription
+curl -G https://www.strava.com/api/v3/push_subscriptions \
+  -d client_id=YOUR_CLIENT_ID \
+  -d client_secret=YOUR_CLIENT_SECRET
+
+# Delete subscription (if needed)
+curl -X DELETE https://www.strava.com/api/v3/push_subscriptions/SUBSCRIPTION_ID \
+  -d client_id=YOUR_CLIENT_ID \
+  -d client_secret=YOUR_CLIENT_SECRET
+```
+
+**Note:** Events are stored in memory (last 100 events). They're cleared on server restart but this rarely happens with Railway.
 
 ## MCP Tools
 
@@ -193,6 +255,25 @@ Analyze performance trends over time.
   "weeks": 12
 }
 ```
+
+### `strava_get_recent_events`
+
+Get recent webhook events from Strava (requires webhook setup).
+
+**Parameters:**
+- `limit` (number, optional): Number of recent events to return (default: 10, max: 100)
+
+**Example:**
+```json
+{
+  "limit": 20
+}
+```
+
+**Returns:**
+- Activity creates, updates, and deletes
+- Event timestamps
+- Activity IDs for fetching details
 
 ## Rate Limiting
 

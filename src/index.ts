@@ -30,6 +30,31 @@ try {
   process.exit(1);
 }
 
+// Store recent webhook events in memory (last 100 events)
+interface WebhookEvent {
+  type: string;
+  activityId: number;
+  athleteId: number;
+  timestamp: number;
+  eventTime: number;
+}
+
+const recentEvents: WebhookEvent[] = [];
+
+function addWebhookEvent(type: string, activityId: number, athleteId: number, eventTime: number) {
+  recentEvents.unshift({
+    type,
+    activityId,
+    athleteId,
+    timestamp: Date.now(),
+    eventTime: eventTime * 1000, // Convert to milliseconds
+  });
+  if (recentEvents.length > 100) {
+    recentEvents.pop();
+  }
+  console.log(`Added webhook event: ${type} for activity ${activityId}`);
+}
+
 // Create MCP server
 const server = new Server(
   {
@@ -141,6 +166,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['metric', 'sport_type'],
       },
     },
+    {
+      name: 'strava_get_recent_events',
+      description: 'Get recent webhook events from Strava (activity creates, updates, deletes)',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          limit: {
+            type: 'number',
+            description: 'Number of recent events to return (default: 10, max: 100)',
+          },
+        },
+      },
+    },
   ],
 }));
 
@@ -189,6 +227,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case 'strava_get_recent_events': {
+        const limit = (args as any)?.limit || 10;
+        const events = recentEvents.slice(0, Math.min(limit, 100));
+
+        const formattedEvents = events.map((event) => ({
+          type: event.type,
+          activityId: event.activityId,
+          athleteId: event.athleteId,
+          eventTime: new Date(event.eventTime).toISOString(),
+          receivedAt: new Date(event.timestamp).toISOString(),
+        }));
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              count: formattedEvents.length,
+              events: formattedEvents,
+            }, null, 2),
+          }],
+        };
+      }
+
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
@@ -230,6 +291,49 @@ if (useSSE) {
   // Health check endpoint
   app.get('/health', (req, res) => {
     res.json({ status: 'ok', server: 'strava-mcp', version: '1.0.0' });
+  });
+
+  // Webhook validation endpoint (Strava calls this once during subscription setup)
+  app.get('/webhook/strava', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    console.log(`Webhook verification request - mode: ${mode}, token: ${token}`);
+
+    if (mode === 'subscribe' && token === process.env.WEBHOOK_VERIFY_TOKEN) {
+      console.log('Webhook verification successful');
+      res.json({ 'hub.challenge': challenge });
+    } else {
+      console.log('Webhook verification failed');
+      res.status(403).send('Forbidden');
+    }
+  });
+
+  // Webhook event receiver (Strava POSTs here when events happen)
+  app.post('/webhook/strava', (req, res) => {
+    const event = req.body;
+
+    console.log('Received Strava webhook event:', JSON.stringify(event, null, 2));
+
+    // Event structure:
+    // {
+    //   aspect_type: "create" | "update" | "delete",
+    //   event_time: 1549560669,
+    //   object_id: 1234567890,  // activity ID
+    //   object_type: "activity" | "athlete",
+    //   owner_id: 134815,        // athlete ID
+    //   subscription_id: 120475,
+    //   updates: { ... }         // for updates only
+    // }
+
+    if (event.object_type === 'activity' && event.object_id) {
+      addWebhookEvent(event.aspect_type, event.object_id, event.owner_id, event.event_time);
+    } else if (event.object_type === 'athlete') {
+      console.log(`Athlete event: ${event.aspect_type} for athlete ${event.owner_id}`);
+    }
+
+    res.status(200).send('EVENT_RECEIVED');
   });
 
   // SSE endpoint - handles GET, POST, and DELETE using StreamableHTTPServerTransport
