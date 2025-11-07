@@ -13,11 +13,12 @@ A Model Context Protocol (MCP) server for accessing Strava data. This single-use
 ## Architecture
 
 - **Runtime**: Node.js/TypeScript
-- **Framework**: MCP SDK (@modelcontextprotocol/sdk)
-- **Transport**: SSE (Server-Sent Events) for Railway deployment, stdio for local development
+- **Framework**: MCP SDK (@modelcontextprotocol/sdk v1.12+)
+- **Transport**: StreamableHTTP (SSE) for Railway deployment, stdio for local development
 - **API Client**: node-fetch
 - **Token Storage**: Environment variables (auto-refresh)
 - **Auth**: OAuth 2.0
+- **Session Management**: UUID-based session IDs with `mcp-session-id` header
 
 ## Setup
 
