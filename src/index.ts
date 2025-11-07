@@ -241,8 +241,15 @@ if (useSSE) {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
 
+    // Construct full endpoint URL
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const endpoint = `${protocol}://${host}/message`;
+
+    console.log(`SSE endpoint URL: ${endpoint}`);
+
     // Create transport and connect
-    const transport = new SSEServerTransport('/message', res);
+    const transport = new SSEServerTransport(endpoint, res);
     await server.connect(transport);
 
     // Store transport for message routing
@@ -276,13 +283,14 @@ if (useSSE) {
       return;
     }
 
-    // Let the transport handle the message
+    // Let the transport handle the message with req and res
     try {
-      await (transport as any).handlePostMessage(req.body);
-      res.status(200).end();
+      await (transport as any).handlePostMessage(req, res);
     } catch (error) {
       console.error('Error handling message:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal server error' });
+      }
     }
   });
 
