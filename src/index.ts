@@ -208,6 +208,21 @@ if (useSSE) {
   const app = express();
   app.use(express.json());
 
+  // CORS middleware to allow Poke.com and other clients to connect
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      res.status(200).end();
+      return;
+    }
+    next();
+  });
+
   // Store active SSE transports by session ID
   const transports = new Map<string, SSEServerTransport>();
 
@@ -224,6 +239,7 @@ if (useSSE) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
 
     // Create transport and connect
     const transport = new SSEServerTransport('/message', res);

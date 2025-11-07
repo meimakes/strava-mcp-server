@@ -72,8 +72,34 @@ PORT=3000
 ```
 
 4. Deploy the application
+5. Once deployed, Railway will provide you with a URL (e.g., `https://your-app.up.railway.app`)
 
-### 4. Local Development
+### 4. Connect to Poke.com
+
+After deploying to Railway, you can connect your Strava MCP server to Poke.com:
+
+1. Go to [Poke.com](https://poke.com)
+2. Navigate to Connections → Add Integration → Custom Integration
+3. Click "Add Server" or "Add MCP Server"
+4. Enter your Railway SSE endpoint URL:
+   ```
+   https://your-app.up.railway.app/sse
+   ```
+   Replace `your-app.up.railway.app` with your actual Railway domain
+
+5. Give it a name like "Strava" and save
+6. The server should now be connected and available in Poke.com
+
+**Note:** The server URL must end with `/sse` - this is the Server-Sent Events endpoint that maintains the connection.
+
+#### Troubleshooting Poke.com Connection
+
+- **"Invalid MCP server URL"**: Ensure your URL ends with `/sse` and the server is deployed and running
+- **Connection timeout**: Check Railway logs to see if the server is starting correctly
+- **Server not responding**: Verify the environment variables are set correctly in Railway
+- **Test the endpoint**: Visit `https://your-app.up.railway.app/health` - you should see `{"status":"ok",...}`
+
+### 5. Local Development
 
 For local testing without Railway:
 
