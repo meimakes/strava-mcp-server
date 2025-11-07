@@ -79,7 +79,7 @@ PORT=3000
 After deploying to Railway, you can connect your Strava MCP server to Poke.com:
 
 1. Go to [Poke.com](https://poke.com)
-2. Navigate to Settings → MCP Servers (or the integration section)
+2. Navigate to Connections → Add Integration → Custom Integration
 3. Click "Add Server" or "Add MCP Server"
 4. Enter your Railway SSE endpoint URL:
    ```
