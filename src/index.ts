@@ -208,22 +208,66 @@ if (useSSE) {
   const app = express();
   app.use(express.json());
 
+  // Store active SSE transports by session ID
+  const transports = new Map<string, SSEServerTransport>();
+
   // Health check endpoint
   app.get('/health', (req, res) => {
     res.json({ status: 'ok', server: 'strava-mcp', version: '1.0.0' });
   });
 
-  // SSE endpoint
+  // SSE endpoint - establishes long-lived connection
   app.get('/sse', async (req, res) => {
     console.log('Client connected via SSE');
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Create transport and connect
     const transport = new SSEServerTransport('/message', res);
     await server.connect(transport);
+
+    // Store transport for message routing
+    const sessionId = (transport as any)._sessionId;
+    if (sessionId) {
+      transports.set(sessionId, transport);
+      console.log(`SSE session established: ${sessionId}`);
+    }
+
+    // Clean up on disconnect
+    req.on('close', () => {
+      if (sessionId) {
+        transports.delete(sessionId);
+        console.log(`SSE session closed: ${sessionId}`);
+      }
+    });
   });
 
-  // Message endpoint
+  // Message endpoint - receives client messages
   app.post('/message', async (req, res) => {
-    // SSE transport handles the messages internally
-    res.status(200).end();
+    const sessionId = req.query.sessionId as string;
+
+    if (!sessionId) {
+      res.status(400).json({ error: 'Missing sessionId' });
+      return;
+    }
+
+    const transport = transports.get(sessionId);
+    if (!transport) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    // Let the transport handle the message
+    try {
+      await (transport as any).handlePostMessage(req.body);
+      res.status(200).end();
+    } catch (error) {
+      console.error('Error handling message:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 
   const PORT = process.env.PORT || 3000;
