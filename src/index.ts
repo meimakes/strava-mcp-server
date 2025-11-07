@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import express from 'express';
+import { randomUUID } from 'crypto';
 import { TokenManager } from './token-manager.js';
 import { StravaClient } from './strava-client.js';
 import { getActivities, GetActivitiesParams } from './tools/get-activities.js';
@@ -211,8 +212,8 @@ if (useSSE) {
   // CORS middleware to allow Poke.com and other clients to connect
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
 
     // Handle preflight requests
@@ -223,71 +224,48 @@ if (useSSE) {
     next();
   });
 
-  // Store active SSE transports by session ID
-  const transports = new Map<string, SSEServerTransport>();
+  // Store active transports by session ID
+  const transports = new Map<string, StreamableHTTPServerTransport>();
 
   // Health check endpoint
   app.get('/health', (req, res) => {
     res.json({ status: 'ok', server: 'strava-mcp', version: '1.0.0' });
   });
 
-  // SSE endpoint - establishes long-lived connection
-  app.get('/sse', async (req, res) => {
-    console.log('Client connected via SSE');
+  // SSE endpoint - handles GET, POST, and DELETE using StreamableHTTPServerTransport
+  app.all('/sse', async (req, res) => {
+    const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
-    // Set SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+    console.log(`${req.method} /sse - Session: ${sessionId || 'new'}`);
 
-    // Construct full endpoint URL
-    const protocol = req.headers['x-forwarded-proto'] || 'http';
-    const host = req.headers['x-forwarded-host'] || req.headers.host;
-    const endpoint = `${protocol}://${host}/message`;
+    // Get existing transport or create new one
+    let transport = sessionId ? transports.get(sessionId) : undefined;
 
-    console.log(`SSE endpoint URL: ${endpoint}`);
-
-    // Create transport and connect
-    const transport = new SSEServerTransport(endpoint, res);
-    await server.connect(transport);
-
-    // Store transport for message routing
-    const sessionId = (transport as any)._sessionId;
-    if (sessionId) {
-      transports.set(sessionId, transport);
-      console.log(`SSE session established: ${sessionId}`);
-    }
-
-    // Clean up on disconnect
-    req.on('close', () => {
-      if (sessionId) {
-        transports.delete(sessionId);
-        console.log(`SSE session closed: ${sessionId}`);
-      }
-    });
-  });
-
-  // Message endpoint - receives client messages
-  app.post('/message', async (req, res) => {
-    const sessionId = req.query.sessionId as string;
-
-    if (!sessionId) {
-      res.status(400).json({ error: 'Missing sessionId' });
-      return;
-    }
-
-    const transport = transports.get(sessionId);
     if (!transport) {
-      res.status(404).json({ error: 'Session not found' });
-      return;
+      // Create new transport for this session
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (id) => {
+          console.log(`Session initialized: ${id}`);
+          if (transport) {
+            transports.set(id, transport);
+          }
+        },
+        onsessionclosed: (id) => {
+          console.log(`Session closed: ${id}`);
+          transports.delete(id);
+        },
+      });
+
+      // Connect the transport to the server
+      await server.connect(transport);
     }
 
-    // Let the transport handle the message with req and res
+    // Handle the request
     try {
-      await (transport as any).handlePostMessage(req, res);
+      await transport.handleRequest(req, res, req.body);
     } catch (error) {
-      console.error('Error handling message:', error);
+      console.error('Error handling request:', error);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Internal server error' });
       }

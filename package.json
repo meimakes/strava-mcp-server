@@ -10,7 +10,7 @@
     "setup-auth": "tsx setup-auth.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@modelcontextprotocol/sdk": "^1.12.0",
     "express": "^4.18.2",
     "node-fetch": "^3.3.2"
   },
