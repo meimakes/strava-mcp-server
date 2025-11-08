@@ -1,6 +1,8 @@
 # Strava MCP Server
 
-A Model Context Protocol (MCP) server for accessing Strava data. This single-user server provides tools to fetch activities, analyze performance trends, and get athlete statistics.
+A Model Context Protocol (MCP) server for accessing Strava data. This single-user server provides tools to fetch activities, analyze performance trends, and get athlete statistics with real-time webhook support.
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/lJUERL?referralCode=7zdyjn&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 ## Features
 
@@ -9,6 +11,7 @@ A Model Context Protocol (MCP) server for accessing Strava data. This single-use
 - **Athlete Stats**: View all-time statistics (recent, year-to-date, and all-time totals)
 - **Search Activities**: Find activities matching specific criteria
 - **Analyze Trends**: Analyze performance trends over time for various metrics
+- **Real-Time Webhooks**: Get instant notifications when activities are created, updated, or deleted
 
 ## Architecture
 
