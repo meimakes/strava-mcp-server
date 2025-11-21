@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server for accessing Strava data. This single-user server provides tools to fetch activities, analyze performance trends, and get athlete statistics with real-time webhook support.
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/lJUERL?referralCode=7zdyjn&utm_medium=integration&utm_source=template&utm_campaign=generic)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/Baum78?referralCode=7zdyjn&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 ## Features
 
@@ -187,7 +187,7 @@ curl -X DELETE https://www.strava.com/api/v3/push_subscriptions/SUBSCRIPTION_ID 
 List recent Strava activities.
 
 **Parameters:**
-- `days_back` (number, optional): Days to look back (default: 30)
+- `days_back` (number, optional): Days to look back (default: 90)
 - `sport_type` (string, optional): Filter by sport type (e.g., "Run", "Ride", "WeightTraining")
 - `limit` (number, optional): Maximum activities to return (default: 30)
 

@@ -79,7 +79,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           days_back: {
             type: 'number',
-            description: 'Number of days to look back (default: 30)',
+            description: 'Number of days to look back (default: 90)',
           },
           sport_type: {
             type: 'string',

@@ -10,7 +10,7 @@ export async function getActivities(
   client: StravaClient,
   params: GetActivitiesParams
 ): Promise<string> {
-  const daysBack = params.days_back || 30;
+  const daysBack = params.days_back || 90;
   const limit = params.limit || 30;
   const sportType = params.sport_type;
 
@@ -19,11 +19,19 @@ export async function getActivities(
   daysAgo.setDate(daysAgo.getDate() - daysBack);
   const afterTimestamp = Math.floor(daysAgo.getTime() / 1000);
 
+  console.log(`Fetching activities: days_back=${daysBack}, limit=${limit}, sport_type=${sportType || 'all'}, after_timestamp=${afterTimestamp}`);
+
+  // When filtering by sport type, fetch more activities to ensure we get enough of that type
+  // Otherwise, if recent activities are all other types, we might not get any matches
+  const fetchLimit = sportType ? 200 : limit;
+
   // Fetch activities
   const activities = await client.getActivities({
     after: afterTimestamp,
-    per_page: limit
+    per_page: fetchLimit
   });
+
+  console.log(`API returned ${activities.length} activities`);
 
   // Filter by sport type if specified
   let filteredActivities = activities;
@@ -31,6 +39,14 @@ export async function getActivities(
     filteredActivities = activities.filter(
       (a) => a.sport_type.toLowerCase() === sportType.toLowerCase()
     );
+    console.log(`After sport_type filter: ${filteredActivities.length} activities (looking for "${sportType}")`);
+
+    // Debug: show all unique sport types in the results
+    const uniqueSportTypes = [...new Set(activities.map(a => a.sport_type))];
+    console.log(`Available sport types in results: ${uniqueSportTypes.join(', ')}`);
+
+    // Apply the limit after filtering
+    filteredActivities = filteredActivities.slice(0, limit);
   }
 
   if (filteredActivities.length === 0) {
