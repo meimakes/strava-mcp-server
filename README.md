@@ -97,6 +97,33 @@ After deploying to Railway, you can connect your Strava MCP server to Poke.com:
 
 **Note:** The server URL must end with `/sse` - this is the Server-Sent Events endpoint that maintains the connection.
 
+### Claude Desktop (stdio mode)
+
+1. Complete the [Setup](#setup) steps above to get your OAuth tokens
+2. Build the project: `npm run build`
+3. Edit your Claude Desktop config:
+   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "strava": {
+      "command": "node",
+      "args": ["/absolute/path/to/strava-mcp-server/dist/index.js"],
+      "env": {
+        "STRAVA_CLIENT_ID": "your_client_id",
+        "STRAVA_CLIENT_SECRET": "your_client_secret",
+        "STRAVA_ACCESS_TOKEN": "your_access_token",
+        "STRAVA_REFRESH_TOKEN": "your_refresh_token"
+      }
+    }
+  }
+}
+```
+
+4. Restart Claude Desktop. Strava tools will now be available.
+
 #### Troubleshooting Poke.com Connection
 
 - **"Invalid MCP server URL"**: Ensure your URL ends with `/sse` and the server is deployed and running
