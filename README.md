@@ -5,7 +5,7 @@ A Model Context Protocol (MCP) server for accessing Strava data. This single-use
 Built by [@meimakes](https://x.com/meimakes)
 
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/template?template=https://github.com/meimakes/strava-mcp-server)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/template?template=https://github.com/meimakes/strava-mcp-server&referralCode=a6V1Do)
 
 ## Features
 
